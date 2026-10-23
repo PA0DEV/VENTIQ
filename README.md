@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="Docs/Images/VENTIQ_Logo_Universal.svg" alt="VENTIQ — Smart Cooling System" width="420">
+  <img src="Docs/Images/VENTIQ_Logo_Dark.svg" alt="VENTIQ — Smart Cooling System" width="420">
 </p>
 
 <h1 align="center">VENTIQ</h1>
