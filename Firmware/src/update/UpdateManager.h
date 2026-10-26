@@ -29,7 +29,8 @@ enum class UpdateError : uint8_t {
   Downgrade,
   FinalizeFailed,
   Timeout,
-  Aborted
+  Aborted,
+  BundleMismatch
 };
 
 struct UpdateStatus {
@@ -53,11 +54,12 @@ class UpdateManager {
 
   bool start(const char *sha256Hex);
   bool write(const uint8_t *data, size_t len);
-  bool finish();
+  bool finish(const FirmwareMarker *expectedMarker = nullptr);
   void abort(UpdateError reason = UpdateError::Aborted);
 
   UpdateStatus status() const;
   bool isBusy() const;
+  uint32_t availableCapacity() const;
 
   static constexpr uint32_t kIdleTimeoutMs = 30000;
   static constexpr uint32_t kRebootDelayMs = 1500;

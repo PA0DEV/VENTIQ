@@ -43,6 +43,14 @@
     busy: 'Es läuft bereits ein anderes Update.',
     not_allowed: 'Das Gerät lässt das Update derzeit nicht zu.',
     bad_sha256_param: 'Die Prüfsumme wurde nicht korrekt übertragen.',
+    bad_bundle: 'Das Update-Paket ist beschädigt oder hat ein ungültiges Format.',
+    bad_file_type: 'Bitte eine .vtu- oder .bin-Datei auswählen.',
+    bundle_mismatch: 'Die Firmware-Version im Paket stimmt nicht mit dem Manifest überein.',
+    asset_no_space: 'Für die Weboberfläche ist nicht genügend LittleFS-Speicher frei.',
+    asset_write_failed: 'Webassets konnten nicht sicher zwischengespeichert werden.',
+    asset_commit_failed: 'Die Firmware ist geschrieben; die Webassets werden beim Neustart erneut übernommen.',
+    filesystem_unavailable: 'Das Dateisystem ist nicht verfügbar. Das Update-Paket kann nicht installiert werden.',
+    bundle_hash_mismatch: 'Die Prüfsumme des Pakets oder eines Webassets stimmt nicht.',
     no_space: 'Die Firmware ist zu groß für den freien Speicher.',
     write_failed: 'Schreiben in den Flash-Speicher fehlgeschlagen.',
     empty: 'Die Datei ist leer.',
@@ -56,7 +64,7 @@
   };
 
   function $(id) { return document.getElementById(id); }
-  var file = null, hash = '', capacity = 0, busy = false;
+  var file = null, hash = '', kind = '', capacity = 0, busy = false;
 
   function setMsg(text, kind) {
     var el = $('u-msg');
@@ -68,25 +76,33 @@
   function fmtKb(n) { return (n / 1024).toFixed(1) + ' KB'; }
 
   function refresh() {
-    $('u-start').disabled = busy || !file || !hash || !$('u-ack').checked;
+    $('u-start').disabled = busy || !file || (kind === 'firmware' && !hash) || !$('u-ack').checked;
     $('u-file').disabled = busy;
     $('u-ack').disabled = busy;
   }
 
   function onFile() {
-    file = null; hash = '';
+    file = null; hash = ''; kind = '';
     $('u-info').textContent = '';
     setMsg('');
     var f = $('u-file').files[0];
     if (!f) { refresh(); return; }
-    if (!/\.bin$/i.test(f.name)) { setMsg('Bitte eine .bin-Datei auswählen.', 'bad'); refresh(); return; }
+    if (/\.vtu$/i.test(f.name)) kind = 'bundle';
+    else if (/\.bin$/i.test(f.name)) kind = 'firmware';
+    else { setMsg('Bitte eine .vtu- oder .bin-Datei auswählen.', 'bad'); refresh(); return; }
     if (f.size === 0) { setMsg('Die Datei ist leer.', 'bad'); refresh(); return; }
-    if (capacity && f.size > capacity) {
+    if (kind === 'firmware' && capacity && f.size > capacity) {
       setMsg('Die Datei (' + fmtKb(f.size) + ') passt nicht in den freien Speicher (' + fmtKb(capacity) + ').', 'bad');
       refresh();
       return;
     }
     file = f;
+    if (kind === 'bundle') {
+      $('u-info').textContent = f.name + ' · ' + fmtKb(f.size) +
+        ' · Firmware und Webassets werden auf dem Gerät geprüft';
+      refresh();
+      return;
+    }
     $('u-info').textContent = f.name + ' · ' + fmtKb(f.size) + ' · Prüfsumme wird berechnet …';
     var reader = new FileReader();
     reader.onload = function () {
@@ -107,9 +123,12 @@
       .catch(function () {});
   }
 
-  function waitForReboot() {
+  function waitForReboot(initialStatus) {
     var tries = 0, t0 = Date.now();
-    setMsg('Update angenommen. Das Gerät startet neu – die Regelung ist währenddessen unterbrochen. Bitte nicht trennen.', 'warn');
+    var pendingAssets = initialStatus && initialStatus.bundle && initialStatus.bundle.assetsPending;
+    setMsg(pendingAssets
+      ? 'Firmware übernommen. Die Webassets werden beim Neustart nochmals fertiggestellt; die Konfiguration bleibt erhalten. Bitte nicht trennen.'
+      : 'Update angenommen. Das Gerät startet neu – die Regelung ist währenddessen unterbrochen. Bitte nicht trennen.', 'warn');
     (function check() {
       if (++tries > 45) {
         setMsg('Das Gerät hat sich nach 90 s nicht gemeldet. Bitte Seite neu laden oder Gerät prüfen.', 'bad');
@@ -151,7 +170,8 @@
     $('u-prog-t').textContent = 'Übertragung läuft …';
 
     var xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/update?sha256=' + hash);
+    var isBundle = kind === 'bundle';
+    xhr.open('POST', isBundle ? '/api/update/bundle' : '/api/update?sha256=' + hash);
     xhr.timeout = 180000;
     xhr.upload.onprogress = function (e) {
       if (!e.lengthComputable) return;
@@ -163,7 +183,13 @@
     xhr.onload = function () {
       var d = null;
       try { d = JSON.parse(xhr.responseText); } catch (e) {}
-      if (xhr.status === 200) { waitForReboot(); return; }
+      if (xhr.status === 200) {
+        if (kind === 'bundle' && (!d || !d.bundle)) {
+          setMsg('Das Gerät hat das Paket angenommen, aber keine Bundle-Statusdaten zurückgegeben.', 'warn');
+        }
+        waitForReboot(d);
+        return;
+      }
       var code = d && d.error;
       setMsg(ERR[code] || ('Update fehlgeschlagen (HTTP ' + xhr.status + ').'), 'bad');
       done();
@@ -173,7 +199,7 @@
       done();
     };
     var fd = new FormData();
-    fd.append('firmware', file, file.name);
+    fd.append(isBundle ? 'bundle' : 'firmware', file, file.name);
     xhr.send(fd);
   }
 

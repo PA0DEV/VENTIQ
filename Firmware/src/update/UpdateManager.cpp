@@ -31,6 +31,7 @@ const char *updateErrorName(UpdateError e) {
     case UpdateError::FinalizeFailed: return "finalize_failed";
     case UpdateError::Timeout: return "timeout";
     case UpdateError::Aborted: return "aborted";
+    case UpdateError::BundleMismatch: return "bundle_mismatch";
   }
   return "unknown";
 }
@@ -66,6 +67,9 @@ bool UpdateManager::isBusy() const {
 }
 
 UpdateStatus UpdateManager::status() const { return {state_, error_, received_, capacity_}; }
+uint32_t UpdateManager::availableCapacity() const {
+  return platform_ == nullptr ? 0 : (platform_->freeSpace() & 0xFFFFF000);
+}
 
 void UpdateManager::fail(UpdateError e) {
   if (platform_->flashRunning()) platform_->flashEnd(false);
@@ -163,7 +167,7 @@ bool UpdateManager::write(const uint8_t *data, size_t len) {
   return true;
 }
 
-bool UpdateManager::finish() {
+bool UpdateManager::finish(const FirmwareMarker *expectedMarker) {
   if (state_ != UpdateState::Receiving) return false;
   state_ = UpdateState::Validating;
 
@@ -176,6 +180,14 @@ bool UpdateManager::finish() {
   if (markerCount_ != 1) { fail(UpdateError::NoMarker); return false; }
   if (strncmp(found_.hw, self_.hw, sizeof(found_.hw)) != 0) {
     fail(UpdateError::WrongHardware);
+    return false;
+  }
+  if (expectedMarker != nullptr &&
+      (strncmp(found_.hw, expectedMarker->hw, sizeof(found_.hw)) != 0 ||
+       found_.major != expectedMarker->major ||
+       found_.minor != expectedMarker->minor ||
+       found_.patch != expectedMarker->patch)) {
+    fail(UpdateError::BundleMismatch);
     return false;
   }
   SemVer incoming = {found_.major, found_.minor, found_.patch};

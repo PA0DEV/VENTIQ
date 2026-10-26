@@ -48,6 +48,14 @@ section>.card+.card{margin-top:1rem}
 .hints li+li{margin-top:.35rem}
 .field{margin-bottom:1rem}
 .field label{display:block;margin-bottom:.35rem;color:var(--text-secondary)}
+input[type=text],input[type=password]{width:100%;padding:.6rem .7rem;background:var(--surface-raised);color:var(--text);border:1px solid var(--border-strong);border-radius:6px;font:inherit}
+select{min-width:0;width:100%;padding:.6rem .7rem;background:var(--surface-raised);color:var(--text);border:1px solid var(--border-strong);border-radius:6px;font:inherit}
+input:disabled{color:var(--text-muted)}
+fieldset{min-width:0;margin:1rem 0;padding:1rem;border:1px solid var(--border);border-radius:var(--r)}
+legend{padding:0 .4rem;color:var(--text-secondary);font-weight:600}
+.actions{display:flex;flex-wrap:wrap;gap:.75rem}
+.scan-row{display:flex;align-items:stretch;gap:.6rem}
+.scan-row .btn{flex:none}
 input[type=file]{width:100%;padding:.5rem;background:var(--surface-raised);color:var(--text);border:1px solid var(--border-strong);border-radius:var(--r);font:inherit}
 input[type=file]::file-selector-button{margin-right:.75rem;padding:.4rem .8rem;background:var(--surface);color:var(--text);border:1px solid var(--border-strong);border-radius:6px;font:inherit;cursor:pointer}
 input[type=file]:disabled{color:var(--text-muted)}
@@ -70,3 +78,4 @@ progress::-moz-progress-bar{background:var(--accent)}
 
 @media (prefers-reduced-motion:no-preference){nav a,.conn::before{transition:color .15s,background .15s}}
 @media (max-width:520px){nav{order:3;flex-basis:100%;overflow-x:auto}.conn{margin-left:auto}}
+@media (max-width:520px){.scan-row{flex-direction:column}}

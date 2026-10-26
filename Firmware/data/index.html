@@ -64,7 +64,56 @@
   <section id="v-settings" data-page="settings" aria-labelledby="h-settings" hidden>
     <h1 id="h-settings">Einstellungen</h1>
     <article class="card">
-      <p class="na">Einstellungen sind noch nicht verfügbar. Sie folgen, sobald Konfigurationsmodul und Zugriffskonzept bereitstehen.</p>
+      <p class="info">Wähle ein gefundenes WLAN oder gib die SSID manuell ein. Der Controller versucht, die Verbindung mit den gespeicherten Einstellungen aufzubauen.</p>
+      <form id="config-form">
+        <fieldset>
+          <legend>WLAN</legend>
+          <div class="field">
+            <label for="cfg-network-select">Gefundene Netzwerke</label>
+            <div class="scan-row">
+              <select id="cfg-network-select">
+                <option value="">Netzwerke suchen …</option>
+              </select>
+              <button type="button" class="btn" id="cfg-scan">Netzwerke suchen</button>
+            </div>
+            <div class="info" id="cfg-scan-info" role="status" aria-live="polite">Noch kein Scan durchgeführt.</div>
+          </div>
+          <div class="field">
+            <label for="cfg-ssid">SSID</label>
+            <input type="text" id="cfg-ssid" name="ssid" maxlength="32" autocomplete="off" required>
+          </div>
+          <div class="field">
+            <label for="cfg-password">WLAN-Passwort</label>
+            <input type="password" id="cfg-password" name="password" maxlength="63" autocomplete="new-password">
+            <div class="info" id="cfg-password-info">Leer lassen, um das gespeicherte Passwort beizubehalten.</div>
+            <label class="check"><input type="checkbox" id="cfg-clear-password"> Gespeichertes Passwort entfernen (offenes WLAN)</label>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>IPv4</legend>
+          <label class="check"><input type="checkbox" id="cfg-static"> Statische IP verwenden (sonst DHCP)</label>
+          <div id="cfg-static-fields" hidden>
+            <div class="field">
+              <label for="cfg-ip">IP-Adresse</label>
+              <input type="text" id="cfg-ip" inputmode="decimal" maxlength="15" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="cfg-mask">Subnetzmaske</label>
+              <input type="text" id="cfg-mask" inputmode="decimal" maxlength="15" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="cfg-gateway">Gateway</label>
+              <input type="text" id="cfg-gateway" inputmode="decimal" maxlength="15" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="cfg-dns">DNS-Server</label>
+              <input type="text" id="cfg-dns" inputmode="decimal" maxlength="15" autocomplete="off">
+            </div>
+          </div>
+        </fieldset>
+        <div class="actions"><button type="submit" class="btn primary" id="cfg-save" disabled>Einstellungen speichern</button></div>
+        <div class="msg" id="cfg-msg" role="status" aria-live="polite" hidden></div>
+      </form>
     </article>
   </section>
 
@@ -81,12 +130,13 @@
       <ul class="hints">
         <li>Das Gerät startet nach dem Update neu. Während Übertragung, Schreiben und Neustart ist die Lüfterregelung unterbrochen; ein Weiterlaufen der Lüfter ist nicht zugesichert.</li>
         <li>Es gibt keinen Rollback. Bei Stromausfall während des Schreibvorgangs kann das Gerät unbrauchbar werden und muss per USB wiederhergestellt werden.</li>
-        <li>Nur VENTIQ-Firmware für dieses Hardwareziel mit gleicher oder neuerer Version wird angenommen.</li>
+        <li>Das Update-Paket (.vtu) enthält Firmware und Weboberfläche. Die gespeicherte WLAN-Konfiguration wird nicht ersetzt. Pakete müssen eine neuere Version für dieses Hardwareziel enthalten.</li>
+        <li>Ein Firmware-Image (.bin) aktualisiert nur die Firmware, nicht die Weboberfläche.</li>
         <li>Der Upload ist nicht passwortgeschützt: Jeder mit Netzwerkzugang zum Gerät kann Firmware einspielen.</li>
       </ul>
       <div class="field">
-        <label for="u-file">Firmware-Datei (.bin)</label>
-        <input type="file" id="u-file" accept=".bin">
+        <label for="u-file">Update-Paket (.vtu) oder Firmware (.bin)</label>
+        <input type="file" id="u-file" accept=".vtu,.bin">
         <div class="info" id="u-info" aria-live="polite"></div>
       </div>
       <label class="check"><input type="checkbox" id="u-ack"> Ich habe die Hinweise gelesen und möchte das Update starten.</label>

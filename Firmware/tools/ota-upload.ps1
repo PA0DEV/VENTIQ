@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Laedt eine VENTIQ-Firmware per HTTP auf ein Geraet (POST /api/update).
+  Laedt ein VENTIQ-Updatepaket oder Firmwareimage per HTTP auf ein Geraet.
 .EXAMPLE
   .\tools\ota-upload.ps1 -Device 192.168.4.1 -Build
   .\tools\ota-upload.ps1 -Device 192.168.4.1 -Image .\firmware.bin -DryRun
@@ -19,7 +19,7 @@ if ($Build -and $Image) {
 }
 
 if ($Build) {
-  $Image = & (Join-Path $PSScriptRoot "build-firmware.ps1")
+  $Image = & (Join-Path $PSScriptRoot "make-bundle.ps1")
 }
 
 if (-not $Image) {
@@ -30,13 +30,22 @@ if (-not $Image) {
 if (-not (Test-Path $Image)) { throw "Image nicht gefunden: $Image" }
 $Image = (Resolve-Path $Image).Path
 $size = (Get-Item $Image).Length
-$hash = (Get-FileHash -Algorithm SHA256 -Path $Image).Hash.ToLower()
+$extension = [System.IO.Path]::GetExtension($Image).ToLowerInvariant()
 
 Write-Host "Image : $Image ($size Bytes)"
-Write-Host "SHA256: $hash"
 
 $base = "http://$Device"
-$url = "$base/api/update?sha256=$hash"
+if ($extension -eq ".vtu") {
+  $url = "$base/api/update/bundle"
+  $field = "bundle"
+} elseif ($extension -eq ".bin") {
+  $hash = (Get-FileHash -Algorithm SHA256 -Path $Image).Hash.ToLower()
+  Write-Host "SHA256: $hash"
+  $url = "$base/api/update?sha256=$hash"
+  $field = "firmware"
+} else {
+  throw "Unterstuetztes Uploadformat: .vtu (Firmware + Webassets) oder .bin (Firmware allein)."
+}
 
 if ($DryRun) {
   Write-Host "DryRun - wuerde hochladen nach: $url"
@@ -46,7 +55,7 @@ if ($DryRun) {
 Write-Host "Installiert: $(curl.exe -s --max-time 5 "$base/api/firmware")"
 Write-Host "Lade hoch ..."
 
-$body = curl.exe -s --max-time 120 -w "`n%{http_code}" -F "firmware=@$Image" $url
+$body = curl.exe -s --max-time 180 -w "`n%{http_code}" -F "$field=@$Image" $url
 $lines = @($body -split "`n")
 $code = [int]$lines[-1]
 $json = ($lines[0..($lines.Count - 2)] -join "`n")

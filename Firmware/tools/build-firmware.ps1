@@ -8,17 +8,25 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $image = Join-Path $projectRoot ".pio\build\ventiq_core_reva\firmware.bin"
-$pio = "pio"
-if (-not (Get-Command $pio -ErrorAction SilentlyContinue)) {
-  $pio = Join-Path $env:USERPROFILE ".platformio\penv\Scripts\platformio.exe"
-  if (-not (Test-Path -LiteralPath $pio -PathType Leaf)) {
-    throw "PlatformIO nicht gefunden. Fuege 'pio' zum PATH hinzu oder installiere PlatformIO IDE."
-  }
+$pioCommand = Get-Command "pio" -ErrorAction SilentlyContinue
+$platformioExe = Join-Path $env:USERPROFILE ".platformio\penv\Scripts\platformio.exe"
+$pythonCommand = Get-Command "python" -ErrorAction SilentlyContinue
+if ($pioCommand) {
+  $pio = $pioCommand.Source
+  $pioPrefix = @()
+} elseif (Test-Path -LiteralPath $platformioExe -PathType Leaf) {
+  $pio = $platformioExe
+  $pioPrefix = @()
+} elseif ($pythonCommand) {
+  $pio = $pythonCommand.Source
+  $pioPrefix = @("-m", "platformio")
+} else {
+  throw "PlatformIO nicht gefunden. Installiere PlatformIO oder fuege 'pio' zum PATH hinzu."
 }
 
 Push-Location $projectRoot
 try {
-  & $pio run -e ventiq_core_reva | Out-Host
+  & $pio @pioPrefix run -e ventiq_core_reva | Out-Host
   if ($LASTEXITCODE -ne 0) {
     throw "PlatformIO-Build fehlgeschlagen (Exitcode $LASTEXITCODE)."
   }
