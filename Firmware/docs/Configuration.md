@@ -75,9 +75,10 @@ encrypted: any device able to reach the web interface on the trusted LAN or
 setup AP may change settings. The browser UI does not expose the password in
 HTML, status JSON, or API responses.
 
-The current configuration schema contains only WLAN settings. The documented
-control, sensor, safety, and MQTT settings are not implemented in `AppConfig`
-yet and are therefore not exposed as if they were editable.
+The current configuration schema (version 3) contains the WLAN group and the
+MQTT group (below). The documented control, sensor and safety settings are not
+implemented in `AppConfig` yet and are therefore not exposed as if they were
+editable.
 `validateConfig()` validates schema, credential lengths and static IPv4
 consistency. WLAN passwords are stored as plaintext in LittleFS; they must not
 be included in status responses or normal logs. LittleFS storage is not an
@@ -105,4 +106,65 @@ not an atomic transaction.
   DHCP and static IPv4 are both supported.
 - The web UI can scan for visible WLANs and select an SSID; hidden networks
   remain manually configurable.
-- There is no MQTT client, so MQTT cannot edit configuration yet.
+- There is no MQTT client yet; the MQTT settings below are stored, validated
+  and editable in the web UI (settings page, "MQTT (ioBroker)" section) only.
+
+### MQTT web API
+
+Shares `GET/PUT /api/v1/config` (same-origin, JSON, body limit 768 B). No login.
+
+`GET` adds `"mqtt":{"enabled":false,"host":"","port":1883,"username":"","passwordSet":false,"topicPrefix":"ventiq/core","clientId":"","publishIntervalSec":10}`
+(from `ConfigManager::mqttPublic()`; the password is never returned).
+
+`PUT` body: `{"v":1,"wifi":{...},"mqtt":{...}}`; `wifi` and `mqtt` are each
+optional, at least one is required. `mqtt` accepts any subset of `enabled`,
+`host`, `port`, `username`, `password`, `clearPassword`, `topicPrefix`,
+`clientId`, `publishIntervalSec`; omitted keys keep their value. `password`
+omitted or `""` keeps the stored password; `"clearPassword":true` clears it
+(combining it with a non-empty `password` is rejected). The handler only does
+type/length checks via the bounded setters; all content rules come from
+`validateConfig()`. Errors: `{"error":"invalid_mqtt_host","field":"mqtt.host"}`
+(HTTP 422; names from `configValidationErrorName()`, `field` = `mqtt.<jsonKey>`);
+unknown keys/wrong container types give 400. Success:
+`{"saved":true,"changed":true|false}` (persisted through `ConfigManager::apply()`).
+
+## MQTT settings (schema 3, `AppConfig::mqtt`)
+
+| Field (`MqttConfig`) | JSON key (`settings.mqtt.*`) | Default | Rule |
+|---|---|---|---|
+| `enabled` | `enabled` | `false` | bool |
+| `host[64]` | `host` | empty | ≤63 B; `[A-Za-z0-9.-]`, no leading/trailing `.`/`-`, no `..`; required when enabled |
+| `port` | `port` | 1883 | 1–65535 |
+| `username[33]` | `username` | empty | ≤32 B, no control chars; optional |
+| `password[64]` | `password` | empty | ≤63 B, no control chars; **secret**; requires a username |
+| `topicPrefix[49]` | `topicPrefix` | `ventiq/core` | 1–48 B; printable ASCII, no space, `#`, `+`, `$`; no leading/trailing `/`, no `//` |
+| `clientId[24]` | `clientId` | empty (= derived by the MQTT module, e.g. from chip ID) | ≤23 B (MQTT 3.1), `[A-Za-z0-9_-]` |
+| `publishIntervalSec` | `publishIntervalSec` | 10 | 1–3600 |
+
+Disabled MQTT may keep an empty host. The `password` is stored in plaintext
+in `/config.json` (like the WLAN password) and must never appear in status
+JSON, API responses or logs. Use `ConfigManager::mqttPublic()` /
+`makeMqttPublicConfig()` for read-only consumers: it has `passwordSet`
+instead of the password. The MQTT client itself must read `get().mqtt`.
+
+API: `validateMqttConfig(const MqttConfig&)` (also run by `validateConfig`),
+`configValidationErrorName()`, bounded setters `setMqttHost/Username/
+Password/TopicPrefix/ClientId(MqttConfig&, const char*)` (return false and
+leave the value untouched if null/too long). Content and cross-field rules are
+checked only by the validator. Changes go through `ConfigManager::apply()`.
+Changes are persisted immediately; the MQTT module decides when to reconnect
+(suggested: on any change of `mqtt.*`) — to be agreed with the MQTT agent.
+
+### Migration 2 → 3
+
+A version 2 file (`settings.wifi` only) is loaded, the `mqtt` group is filled
+with defaults, and the file is rewritten as version 3. The previous version 2
+file is kept as `/config.bak` by the normal save rotation. Version 3 requires
+all eight `mqtt` keys; unknown or newer schema versions remain untouched
+(`unsupported_schema`). Downgrading firmware to a build supporting only
+schema 2 will report `unsupported_schema` and leave the file untouched;
+restore `/config.bak` manually if needed (only holds the previous version).
+
+Testing: validator cases are in `test/test_config_validator` (native env needs
+a local g++; not run in this session). The migration/load path uses LittleFS
+and is verified only by build; an on-device test is pending.

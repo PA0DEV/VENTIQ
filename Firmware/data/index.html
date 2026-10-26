@@ -111,6 +111,48 @@
             </div>
           </div>
         </fieldset>
+        <fieldset>
+          <legend>MQTT (ioBroker)</legend>
+          <p class="info">Nur Einstellungen: Der MQTT-Client ist noch nicht implementiert, es werden noch keine Daten gesendet. Die Verbindung ist unverschlüsselt.</p>
+          <label class="check"><input type="checkbox" id="cfg-mqtt-enabled"> MQTT aktivieren</label>
+          <div class="field">
+            <label for="cfg-mqtt-host">Broker (Hostname oder IPv4)</label>
+            <input type="text" id="cfg-mqtt-host" maxlength="63" autocomplete="off" autocapitalize="off">
+            <div class="info" id="err-mqtt-host" role="alert"></div>
+          </div>
+          <div class="field">
+            <label for="cfg-mqtt-port">Port</label>
+            <input type="number" id="cfg-mqtt-port" min="1" max="65535" inputmode="numeric">
+            <div class="info" id="err-mqtt-port" role="alert"></div>
+          </div>
+          <div class="field">
+            <label for="cfg-mqtt-user">Benutzername (optional)</label>
+            <input type="text" id="cfg-mqtt-user" maxlength="32" autocomplete="off">
+            <div class="info" id="err-mqtt-username" role="alert"></div>
+          </div>
+          <div class="field">
+            <label for="cfg-mqtt-pass">MQTT-Passwort</label>
+            <input type="password" id="cfg-mqtt-pass" maxlength="63" autocomplete="new-password">
+            <div class="info" id="cfg-mqtt-pass-info">Leer lassen, um das gespeicherte Passwort beizubehalten.</div>
+            <label class="check"><input type="checkbox" id="cfg-mqtt-clear"> Gespeichertes Passwort entfernen</label>
+            <div class="info" id="err-mqtt-password" role="alert"></div>
+          </div>
+          <div class="field">
+            <label for="cfg-mqtt-prefix">Topic-Präfix</label>
+            <input type="text" id="cfg-mqtt-prefix" maxlength="48" autocomplete="off" autocapitalize="off">
+            <div class="info" id="err-mqtt-topicPrefix" role="alert"></div>
+          </div>
+          <div class="field">
+            <label for="cfg-mqtt-cid">Client-ID (leer = automatisch)</label>
+            <input type="text" id="cfg-mqtt-cid" maxlength="23" autocomplete="off" autocapitalize="off">
+            <div class="info" id="err-mqtt-clientId" role="alert"></div>
+          </div>
+          <div class="field">
+            <label for="cfg-mqtt-int">Sendeintervall (Sekunden, 1–3600)</label>
+            <input type="number" id="cfg-mqtt-int" min="1" max="3600" inputmode="numeric">
+            <div class="info" id="err-mqtt-publishIntervalSec" role="alert"></div>
+          </div>
+        </fieldset>
         <div class="actions"><button type="submit" class="btn primary" id="cfg-save" disabled>Einstellungen speichern</button></div>
         <div class="msg" id="cfg-msg" role="status" aria-live="polite" hidden></div>
       </form>

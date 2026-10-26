@@ -75,6 +75,8 @@ progress::-moz-progress-bar{background:var(--accent)}
 .msg.ok{border-left-color:var(--ok);background:rgba(54,168,117,.14)}
 .msg.warn{border-left-color:var(--warn);background:rgba(232,176,74,.14)}
 .msg.bad{border-left-color:var(--alarm);background:rgba(238,110,102,.14)}
+[id^="err-mqtt-"]{color:var(--alarm)}
+[id^="err-mqtt-"]:empty{display:none}
 
 @media (prefers-reduced-motion:no-preference){nav a,.conn::before{transition:color .15s,background .15s}}
 @media (max-width:520px){nav{order:3;flex-basis:100%;overflow-x:auto}.conn{margin-left:auto}}

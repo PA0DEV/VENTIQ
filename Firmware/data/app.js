@@ -137,6 +137,7 @@
         $('cfg-clear-password').checked = false;
         $('cfg-save').disabled = false;
         setStaticFields();
+        loadMqtt(d.mqtt);
         setConfigMessage('', '');
         configLoaded = true;
       })
@@ -146,8 +147,54 @@
       .then(function () { configLoading = false; });
   }
 
+  var mqttPasswordSet = false;
+  var MQTT_ERR = ['host', 'port', 'username', 'password', 'topicPrefix', 'clientId', 'publishIntervalSec'];
+
+  function mqttPassInfo() {
+    $('cfg-mqtt-pass-info').textContent = mqttPasswordSet
+      ? 'Passwort gespeichert. Leer lassen, um es beizubehalten.'
+      : 'Kein Passwort gespeichert.';
+  }
+
+  function clearMqttErrors() {
+    MQTT_ERR.forEach(function (k) { $('err-mqtt-' + k).textContent = ''; });
+  }
+
+  function loadMqtt(m) {
+    if (!m) return;
+    $('cfg-mqtt-enabled').checked = m.enabled;
+    $('cfg-mqtt-host').value = m.host;
+    $('cfg-mqtt-port').value = m.port;
+    $('cfg-mqtt-user').value = m.username;
+    $('cfg-mqtt-prefix').value = m.topicPrefix;
+    $('cfg-mqtt-cid').value = m.clientId;
+    $('cfg-mqtt-int').value = m.publishIntervalSec;
+    $('cfg-mqtt-pass').value = '';
+    $('cfg-mqtt-pass').disabled = false;
+    $('cfg-mqtt-clear').checked = false;
+    mqttPasswordSet = m.passwordSet;
+    mqttPassInfo();
+    clearMqttErrors();
+  }
+
   function saveConfig(event) {
     event.preventDefault();
+    clearMqttErrors();
+    var mqttPass = $('cfg-mqtt-pass').value;
+    var mqttClear = $('cfg-mqtt-clear').checked;
+    var mqtt = {
+      enabled: $('cfg-mqtt-enabled').checked,
+      host: $('cfg-mqtt-host').value,
+      port: parseInt($('cfg-mqtt-port').value, 10),
+      username: $('cfg-mqtt-user').value,
+      topicPrefix: $('cfg-mqtt-prefix').value,
+      clientId: $('cfg-mqtt-cid').value,
+      publishIntervalSec: parseInt($('cfg-mqtt-int').value, 10)
+    };
+    if (isNaN(mqtt.port)) delete mqtt.port;
+    if (isNaN(mqtt.publishIntervalSec)) delete mqtt.publishIntervalSec;
+    if (mqttClear) mqtt.clearPassword = true;
+    else if (mqttPass) mqtt.password = mqttPass;
     var password = $('cfg-password').value;
     if (password && password.length < 8) {
       $('cfg-password').setCustomValidity('Ein WLAN-Passwort muss mindestens 8 Zeichen haben.');
@@ -173,7 +220,7 @@
       method: 'PUT',
       cache: 'no-store',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ v: 1, wifi: wifi })
+      body: JSON.stringify({ v: 1, wifi: wifi, mqtt: mqtt })
     })
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (d) {
@@ -185,14 +232,32 @@
               invalid_password: 'Das Passwort muss leer oder 8 bis 63 Zeichen lang sein.',
               invalid_ipv4_address: 'Bitte alle IPv4-Adressen im Format 192.168.1.10 eingeben.',
               invalid_static_network: 'IP, Subnetzmaske, Gateway oder DNS sind nicht konsistent.',
+              invalid_mqtt_host: 'Ungültiger Broker: nur Buchstaben, Ziffern, Punkt und Bindestrich (max. 63); bei aktivem MQTT erforderlich.',
+              invalid_mqtt_port: 'Der Port muss zwischen 1 und 65535 liegen.',
+              invalid_mqtt_username: 'Ungültiger Benutzername (max. 32 Zeichen, keine Steuerzeichen).',
+              invalid_mqtt_password: 'Ungültiges MQTT-Passwort (max. 63 Zeichen; erfordert einen Benutzernamen).',
+              invalid_mqtt_topic_prefix: 'Ungültiges Topic-Präfix (1–48 Zeichen, kein Leerzeichen, #, +, $, kein führender/abschließender Schrägstrich).',
+              invalid_mqtt_client_id: 'Ungültige Client-ID (max. 23 Zeichen: A–Z, a–z, 0–9, _ und -).',
+              invalid_mqtt_publish_interval: 'Das Sendeintervall muss zwischen 1 und 3600 Sekunden liegen.',
               configuration_unavailable: 'Das Konfigurationsmodul ist derzeit nicht verfügbar.'
             };
-            throw new Error(messages[d.error] || 'Speichern fehlgeschlagen (' + r.status + ').');
+            var text = messages[d.error] || 'Speichern fehlgeschlagen (' + r.status + ').';
+            if (d.field && d.field.indexOf('mqtt.') === 0) {
+              var el = $('err-mqtt-' + d.field.slice(5));
+              if (el) el.textContent = text;
+            }
+            throw new Error(text);
           }
           return d;
         });
       })
       .then(function () {
+        if (mqttClear) mqttPasswordSet = false;
+        else if (mqttPass) mqttPasswordSet = true;
+        $('cfg-mqtt-pass').value = '';
+        $('cfg-mqtt-pass').disabled = false;
+        $('cfg-mqtt-clear').checked = false;
+        mqttPassInfo();
         if ($('cfg-clear-password').checked) passwordConfigured = false;
         else if (password) passwordConfigured = true;
         $('cfg-password').value = '';
@@ -285,6 +350,10 @@
     var clear = this.checked;
     $('cfg-password').disabled = clear;
     if (clear) $('cfg-password').value = '';
+  });
+  $('cfg-mqtt-clear').addEventListener('change', function () {
+    $('cfg-mqtt-pass').disabled = this.checked;
+    if (this.checked) $('cfg-mqtt-pass').value = '';
   });
   $('config-form').addEventListener('submit', saveConfig);
   setInterval(updateAge, 1000);

@@ -15,6 +15,7 @@
 #include "update/EspUpdatePlatform.h"
 #include "update/UpdateManager.h"
 #include "update/WebUpdater.h"
+#include "network/MqttManager.h"
 #include "web/WebUi.h"
 
 static NullCoolingGuard coolingGuard;  // Platzhalter bis zum Regelungs-Paket
@@ -26,6 +27,7 @@ static WebUpdater webUpdater;
 static WebUi webUi;
 static ConfigManager configManager;
 static WifiConnection wifiConnection;
+static MqttManager mqtt;
 static OneWire oneWireBus(BoardPins::ONE_WIRE);
 static Adafruit_EMC2101 emc2101;
 static bool emc2101Ready = false;
@@ -74,5 +76,6 @@ void setup() {
 void loop() {
   server.handleClient();
   wifiConnection.update(configManager.get().wifi, configManager.ready(), millis());
+  mqtt.update(configManager.get().mqtt, configManager.ready(), millis());
   updates.tick();
 }

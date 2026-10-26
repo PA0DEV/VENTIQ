@@ -57,7 +57,7 @@
     sha256_mismatch: 'Die Prüfsumme stimmt nicht. Die Datei wurde beschädigt übertragen.',
     no_ventiq_marker: 'Das ist keine VENTIQ-Firmware.',
     wrong_hardware: 'Die Firmware ist für ein anderes Hardwareziel gebaut.',
-    downgrade_rejected: 'Ältere Firmwareversionen werden abgelehnt (kein Downgrade).',
+    downgrade_rejected: 'Die Version im Paket ist nicht höher als die installierte. Pakete (.vtu) werden nur bei höherer Version angenommen; Downgrades sind nicht erlaubt.',
     finalize_failed: 'Das Update konnte nicht abgeschlossen werden.',
     timeout: 'Zeitüberschreitung: Es kamen zu lange keine Daten an.',
     aborted: 'Die Übertragung wurde abgebrochen.'
@@ -159,7 +159,7 @@
   }
 
   function start() {
-    if (!file || !hash || busy) return;
+    if (!file || (kind === 'firmware' && !hash) || busy) return;
     busy = true;
     refresh();
     setMsg('');

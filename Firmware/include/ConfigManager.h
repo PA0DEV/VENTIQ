@@ -27,6 +27,8 @@ class ConfigManager {
   ConfigStatus apply(const AppConfig &candidate);
 
   const AppConfig &get() const { return active_; }
+  // Secret-free MQTT snapshot (password replaced by passwordSet flag).
+  MqttPublicConfig mqttPublic() const { return makeMqttPublicConfig(active_.mqtt); }
   ConfigStatus status() const { return status_; }
   bool ready() const { return ready_; }
 

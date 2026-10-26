@@ -32,7 +32,7 @@ Ein Image wird nur aktiviert (`Update.end(true)`), wenn alle Prüfungen bestande
 1. **SHA-256 (Pflicht):** Parameter `sha256` (64 Hex-Zeichen) muss zum übertragenen Image passen. Der Hash wird beim Streamen berechnet.
 2. **VENTIQ-Kennung:** Das Image muss die 40-Byte-Struktur `FirmwareMarker` (`VENTIQ-FW-META01`, Hardwareziel, Version) genau einmal enthalten.
 3. **Hardwareziel:** muss exakt `VENTIQ_CORE_REVA` sein.
-4. **Kein Downgrade:** niedrigere Version als die installierte wird abgelehnt. Gleiche Version ist erlaubt. Es gibt bewusst keine Bestätigungsoption.
+4. **Kein Downgrade:** niedrigere Version als die installierte wird abgelehnt. Gleiche Version ist für ein rohes `.bin` erlaubt; ein `.vtu`-Paket wird nur bei **strikt höherer** Version angenommen (`downgrade_rejected`). Es gibt bewusst keine Bestätigungsoption.
 5. **Platz:** Das Image muss in den freien Sketch-Bereich passen.
 
 Die Version steht einmalig in `include/FirmwareInfo.h` (`VENTIQ_FW_MAJOR/MINOR/PATCH`).
@@ -72,7 +72,7 @@ Fehlercodes: `busy`, `not_allowed`, `bad_sha256_param`, `no_space`, `write_faile
 | `POST /api/update?sha256=<hex>` | multipart/form-data, Feld `firmware` (`.bin`) |
 | `POST /api/update/bundle` | multipart/form-data, Feld `bundle` (`.vtu`), ohne Queryparameter |
 | `GET /api/update/status` | `{"state":…,"error":…,"received":…,"capacity":…}` |
-| `GET /api/firmware` | `{"version":"0.1.2","hardware":"VENTIQ_CORE_REVA"}` |
+| `GET /api/firmware` | `{"version":"0.1.4","hardware":"VENTIQ_CORE_REVA"}` |
 
 Bei Bundle-Uploads enthaelt der Status zusaetzlich `kind: "bundle"`, die Ziel-`version` und unter `bundle` die Felder `assetsTotal`, `assetsDone`, `bytes`, `expected` sowie `assetsPending`. `assetsPending: true` meldet, dass der Firmwarecommit erfolgreich war, aber der Webasset-Commit beim Neustart wiederholt werden muss.
 
@@ -100,7 +100,7 @@ Firmware plus Webassets als einzelne Datei erzeugen:
 .\tools\make-bundle.ps1
 ```
 
-Das Ergebnis ist `.pio/build/ventiq_core_reva/ventiq-update.vtu`. Das Skript erstellt zuerst das Firmwareimage, liest danach nur die sechs freigegebenen Dateien aus `data/` ein und schreibt das Bundle. Die Version muss fuer ein Geraet mit Version `0.1.1` mindestens groesser sein; die aktuelle Projektversion ist `0.1.2`.
+Das Ergebnis ist `.pio/build/ventiq_core_reva/ventiq-update.vtu`. Das Skript erstellt zuerst das Firmwareimage, liest danach nur die sechs freigegebenen Dateien aus `data/` ein und schreibt das Bundle. Die Version muss fuer ein Geraet mit Version `0.1.1` mindestens groesser sein; die aktuelle Projektversion ist `0.1.4`.
 
 Bundle bauen und direkt per Webserver hochladen (Windows):
 

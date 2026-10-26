@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.1.4] - 2026-10-26
+
+### Added
+- First MQTT client increment (PubSubClient, QoS 0): connects only when MQTT is enabled, a host is set and the Wi-Fi station is connected; bounded connect time, exponential reconnect backoff (5-60 s), derived client ID (`ventiq-<chipid>`) when empty.
+- Availability with Last Will (`<prefix>/availability`, retained `online`/`offline`); on connect `status/device/firmware` and `status/network/ip`; periodically `status/device/uptime`, `status/network/rssi`, `status/device/free_heap`, `status/mqtt/last_error`.
+- MQTT setting changes apply at runtime (reconnect, no reboot).
+- Native unit tests for the pure MQTT logic (`test/test_mqtt`).
+
+### Changed
+- Firmware version set to `0.1.4`.
+- `Firmware/docs/mqtt-protocol.md` now marks implemented and planned parts.
+
+### Preserved / Limitations
+- No control/sensor data and no commands over MQTT yet (no subscriptions); unencrypted MQTT for trusted LANs only.
+- `PubSubClient::connect()` is synchronous: an unreachable broker can block the loop for up to ~4 s per attempt (IPv4 literals avoid DNS).
+- Not tested against a real broker or on hardware; native unit tests were written but not run (no local g++).
+
+## [0.1.3] - 2026-10-26
+
+### Added
+- MQTT broker settings in the central configuration (config schema 3): enabled, host, port, username, password, topic prefix, client ID and publish interval, with central validation and defaults.
+- Automatic migration of schema 2 configuration files to schema 3; the old file is kept as `/config.bak`.
+- An "MQTT (ioBroker)" section in the web settings page. `GET/PUT /api/v1/config` now carry the `mqtt` block; the password is never returned (`passwordSet` only) and can be kept or cleared explicitly.
+- Draft documentation of the planned MQTT data points, topics and command behavior in `Firmware/docs/mqtt-protocol.md`.
+
+### Changed
+- Firmware version set to `0.1.3`.
+- The OTA message for `downgrade_rejected` now states that a bundle needs a higher version than the installed one.
+- `PUT /api/v1/config` request body limit raised from 384 to 768 bytes.
+
+### Preserved / Limitations
+- The MQTT client itself is not implemented yet; the settings are stored but not used.
+- The MQTT password is stored in plain text in `/config.json`, like the Wi-Fi password.
+- A firmware downgrade to a version that only knows schema 2 reports `unsupported_schema` and leaves the file untouched.
+- The new settings, migration and web form have not been validated on physical hardware or in a browser; native unit tests were written but not run.
+
 ## [0.1.2] - 2026-10-26
 
 ### Added

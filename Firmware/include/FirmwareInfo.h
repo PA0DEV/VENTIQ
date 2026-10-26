@@ -5,7 +5,7 @@
 // Einzige Quelle der Firmwareversion.
 #define VENTIQ_FW_MAJOR 0
 #define VENTIQ_FW_MINOR 1
-#define VENTIQ_FW_PATCH 2
+#define VENTIQ_FW_PATCH 4
 #define VENTIQ_HW_TARGET "VENTIQ_CORE_REVA"
 
 // Liegt im Flash (PROGMEM); nur per memcpy_P lesen.

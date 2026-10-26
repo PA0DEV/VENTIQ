@@ -59,7 +59,15 @@ bool sameConfig(const AppConfig &left, const AppConfig &right) {
          left.wifi.ipAddress == right.wifi.ipAddress &&
          left.wifi.subnetMask == right.wifi.subnetMask &&
          left.wifi.gateway == right.wifi.gateway &&
-         left.wifi.dnsServer == right.wifi.dnsServer;
+         left.wifi.dnsServer == right.wifi.dnsServer &&
+         left.mqtt.enabled == right.mqtt.enabled &&
+         strcmp(left.mqtt.host, right.mqtt.host) == 0 &&
+         left.mqtt.port == right.mqtt.port &&
+         strcmp(left.mqtt.username, right.mqtt.username) == 0 &&
+         strcmp(left.mqtt.password, right.mqtt.password) == 0 &&
+         strcmp(left.mqtt.topicPrefix, right.mqtt.topicPrefix) == 0 &&
+         strcmp(left.mqtt.clientId, right.mqtt.clientId) == 0 &&
+         left.mqtt.publishIntervalSec == right.mqtt.publishIntervalSec;
 }
 
 bool copyJsonString(JsonVariantConst value, char *target, size_t capacity) {
@@ -95,15 +103,16 @@ ReadResult readConfig(const char *path) {
   if (schemaVersion == 1 && settings.as<JsonObjectConst>().size() == 0) {
     return {ConfigDefaults::makeAppConfig(), ConfigStatus::Migrated};
   }
-  if (schemaVersion != AppConfig::SCHEMA_VERSION) {
+  if (schemaVersion != 2 && schemaVersion != AppConfig::SCHEMA_VERSION) {
     return {AppConfig{}, ConfigStatus::UnsupportedSchema};
   }
 
   AppConfig config;
-  config.schemaVersion = schemaVersion;
+  config.schemaVersion = AppConfig::SCHEMA_VERSION;
+  const bool legacyV2 = schemaVersion == 2;  // v2 -> v3: mqtt group gets defaults
   const JsonObjectConst settingsObject = settings.as<JsonObjectConst>();
   const JsonVariantConst wifiValue = settingsObject["wifi"];
-  if (settingsObject.size() != 1 || !wifiValue.is<JsonObjectConst>()) {
+  if (settingsObject.size() != (legacyV2 ? 1 : 2) || !wifiValue.is<JsonObjectConst>()) {
     return {AppConfig{}, ConfigStatus::InvalidDocument};
   }
 
@@ -131,7 +140,32 @@ ReadResult readConfig(const char *path) {
       validateConfig(config) != ConfigValidationError::None) {
     return {AppConfig{}, ConfigStatus::InvalidDocument};
   }
-  return {config, ConfigStatus::Loaded};
+  if (!legacyV2) {
+    const JsonVariantConst mqttValue = settingsObject["mqtt"];
+    if (!mqttValue.is<JsonObjectConst>()) {
+      return {AppConfig{}, ConfigStatus::InvalidDocument};
+    }
+    const JsonObjectConst mqtt = mqttValue.as<JsonObjectConst>();
+    const JsonVariantConst enabled = mqtt["enabled"];
+    const JsonVariantConst port = mqtt["port"];
+    const JsonVariantConst interval = mqtt["publishIntervalSec"];
+    if (mqtt.size() != 8 || !enabled.is<bool>() || !port.is<uint16_t>() ||
+        !interval.is<uint16_t>() ||
+        !copyJsonString(mqtt["host"], config.mqtt.host, sizeof(config.mqtt.host)) ||
+        !copyJsonString(mqtt["username"], config.mqtt.username, sizeof(config.mqtt.username)) ||
+        !copyJsonString(mqtt["password"], config.mqtt.password, sizeof(config.mqtt.password)) ||
+        !copyJsonString(mqtt["topicPrefix"], config.mqtt.topicPrefix, sizeof(config.mqtt.topicPrefix)) ||
+        !copyJsonString(mqtt["clientId"], config.mqtt.clientId, sizeof(config.mqtt.clientId))) {
+      return {AppConfig{}, ConfigStatus::InvalidDocument};
+    }
+    config.mqtt.enabled = enabled.as<bool>();
+    config.mqtt.port = port.as<uint16_t>();
+    config.mqtt.publishIntervalSec = interval.as<uint16_t>();
+  }
+  if (validateConfig(config) != ConfigValidationError::None) {
+    return {AppConfig{}, ConfigStatus::InvalidDocument};
+  }
+  return {config, legacyV2 ? ConfigStatus::Migrated : ConfigStatus::Loaded};
 }
 
 bool writeConfig(const char *path, const AppConfig &config) {
@@ -151,6 +185,15 @@ bool writeConfig(const char *path, const AppConfig &config) {
   formatIPv4(config.wifi.dnsServer, address, sizeof(address));
   wifi["dnsServer"] = address;
 
+  JsonObject mqtt = document["settings"]["mqtt"].to<JsonObject>();
+  mqtt["enabled"] = config.mqtt.enabled;
+  mqtt["host"] = config.mqtt.host;
+  mqtt["port"] = config.mqtt.port;
+  mqtt["username"] = config.mqtt.username;
+  mqtt["password"] = config.mqtt.password;
+  mqtt["topicPrefix"] = config.mqtt.topicPrefix;
+  mqtt["clientId"] = config.mqtt.clientId;
+  mqtt["publishIntervalSec"] = config.mqtt.publishIntervalSec;
   File file = LittleFS.open(path, "w");
   if (!file) return false;
   const size_t written = serializeJson(document, file);

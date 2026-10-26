@@ -6,8 +6,8 @@
 // Serverinstanz, besitzt keinen eigenen Konfigurationszustand und steuert keine Hardware.
 //   GET /                 Oberflaeche (/index.html aus LittleFS)
 //   GET /api/v1/status    Statusschnappschuss (JSON, nicht gecacht)
-//   GET /api/v1/config    WLAN-Konfiguration ohne Passwort
-//   PUT /api/v1/config    Gepruefte WLAN-Konfiguration via ConfigManager
+//   GET /api/v1/config    WLAN- und MQTT-Konfiguration ohne Passwoerter
+//   PUT /api/v1/config    Gepruefte WLAN-/MQTT-Konfiguration via ConfigManager
 //   POST /api/v1/wifi/scan Startet einen asynchronen WLAN-Scan
 //   GET /api/v1/wifi/scan  Liefert Scanstatus und gefundene Netze
 // Module ohne Datenquelle (Sensorik, Regelung, Alarme, MQTT) werden als null gemeldet.

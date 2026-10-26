@@ -9,7 +9,7 @@
 
 namespace {
 
-constexpr size_t CONFIG_BODY_LIMIT = 384;
+constexpr size_t CONFIG_BODY_LIMIT = 768;
 constexpr int16_t MAX_WIFI_SCAN_RESULTS = 20;
 
 void sendConfigError(ESP8266WebServer &server, int code, const char *error,
@@ -94,6 +94,104 @@ bool sameWifiConfig(const WifiConfig &left, const WifiConfig &right) {
          left.dnsServer == right.dnsServer;
 }
 
+const char *mqttErrorField(ConfigValidationError e) {
+  switch (e) {
+    case ConfigValidationError::InvalidMqttHost: return "mqtt.host";
+    case ConfigValidationError::InvalidMqttPort: return "mqtt.port";
+    case ConfigValidationError::InvalidMqttUsername: return "mqtt.username";
+    case ConfigValidationError::InvalidMqttPassword: return "mqtt.password";
+    case ConfigValidationError::InvalidMqttTopicPrefix: return "mqtt.topicPrefix";
+    case ConfigValidationError::InvalidMqttClientId: return "mqtt.clientId";
+    case ConfigValidationError::InvalidMqttPublishInterval: return "mqtt.publishIntervalSec";
+    default: return nullptr;
+  }
+}
+
+bool sameMqttConfig(const MqttConfig &a, const MqttConfig &b) {
+  return a.enabled == b.enabled && a.port == b.port &&
+         a.publishIntervalSec == b.publishIntervalSec &&
+         strcmp(a.host, b.host) == 0 && strcmp(a.username, b.username) == 0 &&
+         strcmp(a.password, b.password) == 0 && strcmp(a.topicPrefix, b.topicPrefix) == 0 &&
+         strcmp(a.clientId, b.clientId) == 0;
+}
+
+// Applies an optional-key patch to the candidate. Only type/length checks happen here
+// (via the bounded setters); content rules are left to validateConfig().
+// Returns 0 on success, otherwise the HTTP status with error/field set.
+int parseMqttPatch(JsonObjectConst mqtt, MqttConfig &target, const char *&error,
+                   const char *&field) {
+  const char *const keys[] = {"enabled", "host", "port", "username", "password",
+                              "clearPassword", "topicPrefix", "clientId", "publishIntervalSec"};
+  if (!hasOnlyKeys(mqtt, keys, sizeof(keys) / sizeof(keys[0]))) {
+    error = "invalid_mqtt_settings";
+    field = "mqtt";
+    return 400;
+  }
+
+  const JsonVariantConst enabled = mqtt["enabled"];
+  if (!enabled.isNull()) {
+    if (!enabled.is<bool>()) { error = "invalid_mqtt_settings"; field = "mqtt.enabled"; return 400; }
+    target.enabled = enabled.as<bool>();
+  }
+
+  struct TextField {
+    const char *key;
+    const char *errorName;
+    const char *fieldName;
+    bool (*setter)(MqttConfig &, const char *);
+  };
+  const TextField texts[] = {
+      {"host", "invalid_mqtt_host", "mqtt.host", setMqttHost},
+      {"username", "invalid_mqtt_username", "mqtt.username", setMqttUsername},
+      {"password", "invalid_mqtt_password", "mqtt.password", setMqttPassword},
+      {"topicPrefix", "invalid_mqtt_topic_prefix", "mqtt.topicPrefix", setMqttTopicPrefix},
+      {"clientId", "invalid_mqtt_client_id", "mqtt.clientId", setMqttClientId},
+  };
+  for (const TextField &t : texts) {
+    const JsonVariantConst value = mqtt[t.key];
+    if (value.isNull()) continue;
+    // An empty password means "keep"; clearing uses clearPassword.
+    const bool isPassword = strcmp(t.key, "password") == 0;
+    if (!value.is<const char *>() ||
+        (isPassword && value.as<const char *>()[0] == '\0')) {
+      if (!value.is<const char *>()) { error = t.errorName; field = t.fieldName; return 422; }
+      continue;
+    }
+    if (!t.setter(target, value.as<const char *>())) {
+      error = t.errorName;
+      field = t.fieldName;
+      return 422;
+    }
+  }
+
+  const JsonVariantConst clearPassword = mqtt["clearPassword"];
+  if (!clearPassword.isNull()) {
+    if (!clearPassword.is<bool>()) {
+      error = "invalid_mqtt_password"; field = "mqtt.password"; return 422;
+    }
+    if (clearPassword.as<bool>()) {
+      if (mqtt["password"].is<const char *>() && mqtt["password"].as<const char *>()[0] != '\0') {
+        error = "invalid_mqtt_password"; field = "mqtt.password"; return 422;
+      }
+      target.password[0] = '\0';
+    }
+  }
+
+  const JsonVariantConst port = mqtt["port"];
+  if (!port.isNull()) {
+    if (!port.is<uint16_t>()) { error = "invalid_mqtt_port"; field = "mqtt.port"; return 422; }
+    target.port = port.as<uint16_t>();
+  }
+  const JsonVariantConst interval = mqtt["publishIntervalSec"];
+  if (!interval.isNull()) {
+    if (!interval.is<uint16_t>()) {
+      error = "invalid_mqtt_publish_interval"; field = "mqtt.publishIntervalSec"; return 422;
+    }
+    target.publishIntervalSec = interval.as<uint16_t>();
+  }
+  return 0;
+}
+
 }  // namespace
 
 void WebUi::begin(ESP8266WebServer &server, bool fileSystemReady, ConfigManager &config) {
@@ -142,7 +240,18 @@ void WebUi::sendConfig() {
     formatIPv4(wifi.dnsServer, address, sizeof(address));
     settings["dnsServer"] = address;
 
-    char body[320];
+    settings = document["mqtt"].to<JsonObject>();
+    const MqttPublicConfig mqtt = config_->mqttPublic();
+    settings["enabled"] = mqtt.enabled;
+    settings["host"] = mqtt.host;
+    settings["port"] = mqtt.port;
+    settings["username"] = mqtt.username;
+    settings["passwordSet"] = mqtt.passwordSet;
+    settings["topicPrefix"] = mqtt.topicPrefix;
+    settings["clientId"] = mqtt.clientId;
+    settings["publishIntervalSec"] = mqtt.publishIntervalSec;
+
+    char body[768];
     const size_t length = serializeJson(document, body, sizeof(body));
     if (length == 0 || length >= sizeof(body)) {
       sendConfigError(*server_, 500, "response_encoding_failed");
@@ -300,16 +409,23 @@ void WebUi::applyConfig() {
       return;
     }
     const JsonObjectConst root = document.as<JsonObjectConst>();
-    const char *const rootKeys[] = {"v", "wifi"};
+    const char *const rootKeys[] = {"v", "wifi", "mqtt"};
     const JsonVariantConst version = root["v"];
     const JsonVariantConst wifiValue = root["wifi"];
-    if (!hasOnlyKeys(root, rootKeys, 2) || root.size() != 2 ||
+    const JsonVariantConst mqttValue = root["mqtt"];
+    const bool hasWifi = !wifiValue.isNull();
+    const bool hasMqtt = !mqttValue.isNull();
+    if (!hasOnlyKeys(root, rootKeys, 3) || (!hasWifi && !hasMqtt) ||
         !version.is<uint8_t>() || version.as<uint8_t>() != 1 ||
-        !wifiValue.is<JsonObjectConst>()) {
+        (hasWifi && !wifiValue.is<JsonObjectConst>()) ||
+        (hasMqtt && !mqttValue.is<JsonObjectConst>())) {
       sendConfigError(*server_, 400, "invalid_configuration_document");
       return;
     }
 
+    AppConfig candidate = config_->get();
+
+    if (hasWifi) {
     const JsonObjectConst wifi = wifiValue.as<JsonObjectConst>();
     const char *const wifiKeys[] = {
         "ssid", "password", "useStaticIp", "ipAddress", "subnetMask", "gateway", "dnsServer"};
@@ -321,7 +437,6 @@ void WebUi::applyConfig() {
       return;
     }
 
-    AppConfig candidate = config_->get();
     if (!copyString(wifi["ssid"], candidate.wifi.ssid, sizeof(candidate.wifi.ssid))) {
       sendConfigError(*server_, 422, "invalid_ssid", "ssid");
       return;
@@ -345,26 +460,42 @@ void WebUi::applyConfig() {
       sendConfigError(*server_, 422, "invalid_ipv4_address", "network");
       return;
     }
+    }
+
+    if (hasMqtt) {
+      const char *badField = nullptr;
+      const char *badError = nullptr;
+      const int code = parseMqttPatch(mqttValue.as<JsonObjectConst>(), candidate.mqtt,
+                                      badError, badField);
+      if (code != 0) {
+        sendConfigError(*server_, code, badError, badField);
+        return;
+      }
+    }
 
     const ConfigValidationError validation = validateConfig(candidate);
     if (validation != ConfigValidationError::None) {
       const char *field = "wifi";
-      const char *error = "invalid_configuration";
+      const char *error = configValidationErrorName(validation);
       if (validation == ConfigValidationError::InvalidSsid) {
         field = "ssid";
-        error = "invalid_ssid";
       } else if (validation == ConfigValidationError::InvalidPassword) {
         field = "password";
-        error = "invalid_password";
       } else if (validation == ConfigValidationError::InvalidStaticNetwork) {
         field = "network";
-        error = "invalid_static_network";
+      } else {
+        field = mqttErrorField(validation);
+        if (field == nullptr) {
+          field = "config";
+          error = "invalid_configuration";
+        }
       }
       sendConfigError(*server_, 422, error, field);
       return;
     }
 
-    if (sameWifiConfig(candidate.wifi, config_->get().wifi)) {
+    if (sameWifiConfig(candidate.wifi, config_->get().wifi) &&
+        sameMqttConfig(candidate.mqtt, config_->get().mqtt)) {
       server_->sendHeader("Cache-Control", "no-store");
       server_->send(200, "application/json", "{\"saved\":true,\"changed\":false}");
       return;
