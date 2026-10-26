@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>VENTIQ</title>
+<link rel="icon" type="image/svg+xml" href="/appicon.svg">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="#/overview" aria-label="VENTIQ Übersicht"><img src="/appicon.svg" alt="" width="32" height="32"><span>VENT<b>IQ</b></span></a>
+    <nav aria-label="Hauptnavigation">
+      <a href="#/overview" data-view="overview">Übersicht</a>
+      <a href="#/settings" data-view="settings">Einstellungen</a>
+      <a href="#/firmware" data-view="firmware">Firmware</a>
+    </nav>
+    <div class="conn" id="conn" role="status" aria-live="polite">Verbinde …</div>
+  </div>
+</header>
+
+<main>
+  <div class="banner" id="banner" hidden></div>
+
+  <section id="v-overview" data-page="overview" aria-labelledby="h-overview">
+    <img class="logo" src="/logo.svg" alt="VENTIQ – Smart Cooling System" width="1230" height="370">
+    <h1 id="h-overview">Übersicht</h1>
+    <div class="grid">
+      <article class="card" id="c-temps">
+        <h2>Temperaturen</h2>
+        <p class="na">Sensormodul noch nicht verfügbar.</p>
+      </article>
+      <article class="card" id="c-fans">
+        <h2>Lüfter</h2>
+        <p class="na">Drehzahlerfassung noch nicht verfügbar.</p>
+      </article>
+      <article class="card" id="c-control">
+        <h2>Regelung</h2>
+        <p class="na">Regelung und Schutzstatus noch nicht verfügbar.</p>
+      </article>
+      <article class="card" id="c-net">
+        <h2>Netzwerk</h2>
+        <dl>
+          <dt>Modus</dt><dd id="n-mode">–</dd>
+          <dt>IP-Adresse</dt><dd id="n-ip">–</dd>
+          <dt>WLAN-Signal</dt><dd id="n-rssi">–</dd>
+          <dt>MQTT</dt><dd id="n-mqtt">nicht verfügbar</dd>
+        </dl>
+      </article>
+      <article class="card" id="c-sys">
+        <h2>System</h2>
+        <dl>
+          <dt>Firmware</dt><dd id="s-fw">–</dd>
+          <dt>Laufzeit</dt><dd id="s-up">–</dd>
+          <dt>Freier Heap</dt><dd id="s-heap">–</dd>
+          <dt>Letzte Aktualisierung</dt><dd id="s-age">–</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <section id="v-settings" data-page="settings" aria-labelledby="h-settings" hidden>
+    <h1 id="h-settings">Einstellungen</h1>
+    <article class="card">
+      <p class="na">Einstellungen sind noch nicht verfügbar. Sie folgen, sobald Konfigurationsmodul und Zugriffskonzept bereitstehen.</p>
+    </article>
+  </section>
+
+  <section id="v-firmware" data-page="firmware" aria-labelledby="h-firmware" hidden>
+    <h1 id="h-firmware">Firmware</h1>
+    <article class="card">
+      <dl>
+        <dt>Installierte Version</dt><dd id="f-ver">–</dd>
+        <dt>Hardwareziel</dt><dd id="f-hw">–</dd>
+      </dl>
+    </article>
+    <article class="card upd" aria-labelledby="h-upd">
+      <h2 id="h-upd">Firmware aktualisieren</h2>
+      <ul class="hints">
+        <li>Das Gerät startet nach dem Update neu. Während Übertragung, Schreiben und Neustart ist die Lüfterregelung unterbrochen; ein Weiterlaufen der Lüfter ist nicht zugesichert.</li>
+        <li>Es gibt keinen Rollback. Bei Stromausfall während des Schreibvorgangs kann das Gerät unbrauchbar werden und muss per USB wiederhergestellt werden.</li>
+        <li>Nur VENTIQ-Firmware für dieses Hardwareziel mit gleicher oder neuerer Version wird angenommen.</li>
+        <li>Der Upload ist nicht passwortgeschützt: Jeder mit Netzwerkzugang zum Gerät kann Firmware einspielen.</li>
+      </ul>
+      <div class="field">
+        <label for="u-file">Firmware-Datei (.bin)</label>
+        <input type="file" id="u-file" accept=".bin">
+        <div class="info" id="u-info" aria-live="polite"></div>
+      </div>
+      <label class="check"><input type="checkbox" id="u-ack"> Ich habe die Hinweise gelesen und möchte das Update starten.</label>
+      <div class="actions"><button type="button" class="btn primary" id="u-start" disabled>Update starten</button></div>
+      <div class="prog" id="u-prog-wrap"><progress id="u-prog" max="100" hidden></progress><span id="u-prog-t"></span></div>
+      <div class="msg" id="u-msg" role="status" aria-live="polite" hidden></div>
+    </article>
+  </section>
+</main>
+<script src="/app.js"></script>
+<script src="/ota.js"></script>
+</body>
+</html>

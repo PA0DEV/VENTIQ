@@ -16,7 +16,7 @@ Stand: erste Basis. Es gibt nur den lokalen HTTP-Upload; das GitHub-Release-Upda
 
 - Board `d1_mini`, Ldscript `eagle.flash.4m1m.ld`: 4 MB Flash, 1 MB LittleFS, Sketch-Bereich ca. 1 MB (1.044.464 Byte laut Build).
 - Das neue Image wird in den freien Bereich hinter dem laufenden Sketch geschrieben und beim Neustart vom Bootloader an die Startposition kopiert.
-- Aktueller Build: ca. 308 KB Sketch (29,5 %), 29 KB RAM (35,9 %). Ein Update benötigt Platz für ein zweites Image und passt damit deutlich.
+- Zuletzt gebautes `firmware.bin`: 346.384 Byte, unterhalb der Sketch-Kapazität von 1.044.464 Byte.
 - LittleFS wird vom Update nicht berührt; gespeicherte Konfiguration bleibt erhalten.
 - **Ungeprüft:** Dass das reale Board tatsächlich 4 MB Flash hat. Eine Laufzeitprüfung ist noch nicht eingebaut.
 
@@ -51,14 +51,30 @@ Fehlercodes: `busy`, `not_allowed`, `bad_sha256_param`, `no_space`, `write_faile
 
 Antwortcodes des Uploads: `200` angenommen (Neustart folgt), `400` abgelehnt (Hash, Kennung, Hardware, Version, Platz, Parameter), `500` Schreib-/Finalisierungsfehler, `409` anderer Update läuft bereits.
 
-Upload mit Skript (Windows):
+Firmware bauen (Windows; PlatformIO CLI muss im `PATH` oder im ueblichen PlatformIO-IDE-Installationspfad liegen):
+
+```powershell
+.\tools\build-firmware.ps1
+```
+
+PlatformIO erzeugt das uploadbare Image unter `.pio/build/ventiq_core_reva/firmware.bin`.
+Das Skript baut mit dem festgelegten `ventiq_core_reva`-Environment und prueft danach,
+dass die eingebettete Firmwarekennung eindeutig und fuer `VENTIQ_CORE_REVA` ist.
+Der Build-Code bettet diese Kennung aus `FirmwareInfo` ein; der Webserver prueft sie
+beim Upload erneut. PlatformIO kann den Build auch direkt ausfuehren:
 
 ```powershell
 pio run -e ventiq_core_reva
-.\tools\ota-upload.ps1 -Device 192.168.4.1
 ```
 
-Das Skript berechnet den SHA-256 selbst. `-DryRun` zeigt nur Hash und URL. Manuell:
+Builden und direkt per Webserver hochladen (Windows):
+
+```powershell
+.\tools\ota-upload.ps1 -Device 192.168.4.1 -Build
+```
+
+Ohne `-Build` verwendet das Uploadskript weiterhin das vorhandene Image (oder `-Image`).
+Das Skript berechnet den SHA-256 selbst; `-DryRun` zeigt nur Hash und URL. Manuell:
 
 ```
 curl -F "firmware=@firmware.bin" "http://192.168.4.1/api/update?sha256=<hash>"

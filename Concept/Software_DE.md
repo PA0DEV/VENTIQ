@@ -360,7 +360,7 @@ stateDiagram-v2
 - Webinterface im AP-Betrieb und bei bestehender WLAN-Verbindung bereitstellen.
 - Eingaben über den gemeinsamen Konfigurationsweg prüfen und remanent speichern.
 - Bei Schutzübersteuerung tatsächlichen Stellwert und Ursache anzeigen.
-- Detaillierte Seitenstruktur und Gestaltung werden später separat geplant. 📐
+- Visueller Entwurf und Seitenstruktur: [Webserver-Konzept](./Webserver_DE.md). Die Freigabe schreibender Konfigurations- und OTA-Routen ist dort als offene Integrationsfrage dokumentiert. 📐
 
 ### Abnahme
 

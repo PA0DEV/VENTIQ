@@ -2,16 +2,25 @@
 .SYNOPSIS
   Laedt eine VENTIQ-Firmware per HTTP auf ein Geraet (POST /api/update).
 .EXAMPLE
-  .\tools\ota-upload.ps1 -Device 192.168.4.1
+  .\tools\ota-upload.ps1 -Device 192.168.4.1 -Build
   .\tools\ota-upload.ps1 -Device 192.168.4.1 -Image .\firmware.bin -DryRun
 #>
 param(
   [Parameter(Mandatory = $true)][string]$Device,
   [string]$Image,
+  [switch]$Build,
   [switch]$DryRun
 )
 
 $ErrorActionPreference = "Stop"
+
+if ($Build -and $Image) {
+  throw "-Build und -Image koennen nicht gemeinsam verwendet werden."
+}
+
+if ($Build) {
+  $Image = & (Join-Path $PSScriptRoot "build-firmware.ps1")
+}
 
 if (-not $Image) {
   $root = Split-Path -Parent $MyInvocation.MyCommand.Path

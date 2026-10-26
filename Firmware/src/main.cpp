@@ -7,12 +7,14 @@
 #include "update/EspUpdatePlatform.h"
 #include "update/UpdateManager.h"
 #include "update/WebUpdater.h"
+#include "web/WebUi.h"
 
 static NullCoolingGuard coolingGuard;  // Platzhalter bis zum Regelungs-Paket
 static EspUpdatePlatform updatePlatform;
 static UpdateManager updates;
 static ESP8266WebServer server(80);
 static WebUpdater webUpdater;
+static WebUi webUi;
 
 void setup() {
   Serial.begin(115200);
@@ -28,6 +30,7 @@ void setup() {
 
   updates.begin(&updatePlatform, &coolingGuard, FirmwareInfo::marker());
   webUpdater.begin(server, updates);
+  webUi.begin(server);
   server.begin();
 }
 
