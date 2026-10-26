@@ -395,7 +395,7 @@ Vorgeschlagene Topics:
 5. **Fusion-360-Bibliothek und Schaltplan erstellen:** Originalmaße, Pinbelegungen und Footprints aller Module und Anschlüsse verifizieren; Schaltplan VENTIQ Core RevA ausarbeiten.
 6. **PCB-Layout und Fertigungsvorbereitung abschließen:** Modulabstände, Montage, thermische und elektrische Randbedingungen prüfen; passive Bauteile möglichst maschinell bestücken lassen.
 7. **Prototyp aufbauen und Hardware abnehmen:** Versorgung, PWM, RPM, Sensoren, Fehlerfälle und Rackluftstrom testen; offene Betriebsparameter dokumentieren.
-8. **Firmwarepakete 01–10 umsetzen und abnehmen:** Firmwaregrundlage, Konfiguration, Temperatur, PWM, Schutz, RPM, WLAN/AP, Webinterface, MQTT und Gesamttests gemäß Softwarekonzept. OTA bleibt optional und nachgelagert.
+8. **Firmwarepakete 01–10 umsetzen und abnehmen:** Firmwaregrundlage, Konfiguration, Temperatur, PWM, Schutz, RPM, WLAN/AP, Webinterface, MQTT und Gesamttests gemäß Softwarekonzept. Die OTA-Grundlage (lokaler Web-Upload mit Pflicht-SHA-256, siehe Paket 11 und `Firmware/docs/OTA.md`) wird von Anfang an mitgeführt; das GitHub-Release-Update folgt später.
 9. **ioBroker integrieren und System im Rack testen:** Datenpunkte und Befehle festlegen, lokale Regelung bei WLAN-/Broker-Ausfall nachweisen und Temperatur-/Geräuschverhalten bewerten.
 10. **Gehäuse und Montage finalisieren:** 19-Zoll-Elektronikgehäuse, Anschlüsse, WLAN-Empfang im Metallgehäuse und Lüfterbefestigung abschließend prüfen.
 

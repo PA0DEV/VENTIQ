@@ -57,7 +57,7 @@ Jedes Paket baut auf den vorherigen Paketen auf. Die Abnahmekriterien sind prakt
 | **08 · Webinterface** | Istwerte, Einstellungen, WLAN-Einrichtung | Bedienung im Browser |
 | **09 · MQTT** | Daten senden, Befehle empfangen | Bidirektionale ioBroker-Anbindung |
 | **10 · Gesamtabnahme** | Neustarts, Fehlerfälle, Hardwareabstimmung | Geprüfter erster Funktionsstand |
-| **11 · OTA** | Firmwareupdates über WLAN | ⏳ Spätere optionale Erweiterung |
+| **11 · OTA** | Firmwareupdates über WLAN | 🔧 Basis ab Paket 01 vorgesehen; lokaler Upload implementiert, GitHub-Update später |
 
 ---
 
@@ -449,13 +449,28 @@ Bei Broker-Ausfall lokal weiterregeln und automatisch erneut verbinden. Im manue
 
 ---
 
-## 13. Feature-Paket 11 — OTA-Firmwareupdates ⏳
+## 13. Feature-Paket 11 — OTA-Firmwareupdates 🔧
 
-**Optionale spätere Erweiterung**, kein verpflichtender Bestandteil der ersten Version.
+**Entscheidung:** OTA-fähige Architektur von Anfang an. Der lokale Web-Upload gehört zur ersten nutzbaren Firmware; das GitHub-Release-Update bleibt eine spätere Erweiterung. Die Kühlregelung darf nie von Updatefunktionen abhängen.
 
-- Firmwareupdates über WLAN vorsehen.
-- Updateverfahren und Zugriffsschutz später festlegen.
-- Verhalten während Update und Neustart einschließlich Lüfterausgabe separat prüfen.
+Festgelegt und umgesetzt (Details in [Firmware/docs/OTA.md](../Firmware/docs/OTA.md)):
+
+- Flash-Layout `4m1m` (4 MB, 1 MB LittleFS); Konfiguration im Dateisystem bleibt beim Update erhalten.
+- Lokaler `.bin`-Upload per HTTP (`POST /api/update`), als Stream ohne Image im RAM; genau ein Update gleichzeitig.
+- **SHA-256 ist Pflicht**; zusätzlich muss das Image eine VENTIQ-Kennung (Hardwareziel `VENTIQ_CORE_REVA` und Version) genau einmal enthalten.
+- **Downgrades sind gesperrt**, auch nicht per Bestätigung; gleiche Version ist erlaubt.
+- Zentrale Firmwareidentität (Version, Hardwareziel) in `FirmwareInfo`.
+- Update-Kern (`UpdateManager`) mit Zustandsmodell, getrennt vom Web-Transport.
+- Schnittstelle `ICoolingGuard`: Das Update fordert vor dem Start einen konservativen Kühlzustand an und kann bei einem Schutzfehler abgelehnt werden. Bis zu den Paketen 04/05 nur ein Platzhalter.
+
+**Bewusst offen / Einschränkungen:**
+
+- **Keine Authentifizierung** am Upload-Endpunkt (Produktentscheidung). Jeder mit Netzwerkzugang kann ein gültig formatiertes Image einspielen.
+- **Keine Signatur:** SHA-256 und Kennung schützen vor Fehlern, nicht vor absichtlich gebauten Images. Ein Herkunftsnachweis (z. B. Ed25519) ist nicht entschieden.
+- **Kein Rollback / keine Dual-Bank:** Ein Stromausfall während der Bootloader-Kopie kann das Gerät unbrauchbar machen; Wiederherstellung per USB.
+- Verhalten von EMC2101 und Lüftern bei Update, ESP-Reset und I²C-Ausfall ist nicht gemessen; es besteht keine Fail-safe-Zusage.
+- Prüfung der realen Flashgröße zur Laufzeit und echter Upload auf Hardware stehen aus.
+- GitHub-Release-Update (Manifest, HTTPS, Versionsfilter, Nutzerbestätigung) ist noch nicht umgesetzt.
 
 ---
 
